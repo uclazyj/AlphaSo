@@ -41,7 +41,10 @@ export default function App() {
 
   const [boardSize, setBoardSize] = useState(19);
   const [showSettings, setShowSettings] = useState(false);
+  const [showResetConfirm, setShowResetConfirm] = useState(false);
+  const [showRoomModal, setShowRoomModal] = useState(false);
   const [roomId, setRoomId] = useState<string>('');
+  const [newRoomId, setNewRoomId] = useState<string>('');
   const [copied, setCopied] = useState(false);
   const [playerColor, setPlayerColor] = useState<Player | 'spectator' | null>(null);
   const [takenRoles, setTakenRoles] = useState<Player[]>([]);
@@ -57,6 +60,7 @@ export default function App() {
     const hash = window.location.hash.substring(1);
     const id = hash || Math.random().toString(36).substring(2, 9);
     setRoomId(id);
+    setNewRoomId(id);
     if (!hash) window.location.hash = id;
 
     socket = io();
@@ -96,23 +100,28 @@ export default function App() {
   }, [roomId, playStoneSound]);
 
   const resetGame = useCallback((size: number = boardSize) => {
-    if (window.confirm('Are you sure you want to reset the game?')) {
-      const newState = {
-        board: createEmptyBoard(size),
-        turn: 'black',
-        captures: { black: 0, white: 0 },
-        history: [boardToString(createEmptyBoard(size))],
-        passes: 0,
-        isGameOver: false,
-        winner: null,
-        score: null,
-        fullHistory: [],
-      };
-      setBoardSize(size);
-      setShowSettings(false);
-      syncGame(newState);
-    }
+    const newState = {
+      board: createEmptyBoard(size),
+      turn: 'black',
+      captures: { black: 0, white: 0 },
+      history: [boardToString(createEmptyBoard(size))],
+      passes: 0,
+      isGameOver: false,
+      winner: null,
+      score: null,
+      fullHistory: [],
+    };
+    setBoardSize(size);
+    setShowSettings(false);
+    setShowResetConfirm(false);
+    syncGame(newState);
   }, [boardSize, syncGame]);
+
+  const handleJoinRoom = useCallback(() => {
+    if (!newRoomId || newRoomId === roomId) return;
+    window.location.hash = newRoomId;
+    window.location.reload();
+  }, [newRoomId, roomId]);
 
   const handleUndo = useCallback(() => {
     if (gameState.isGameOver || !gameState.fullHistory || gameState.fullHistory.length === 0) return;
@@ -269,15 +278,6 @@ export default function App() {
     }
   };
 
-  const leaveSeat = () => {
-    if (window.confirm('Are you sure you want to leave the room?')) {
-      setPlayerColor(null);
-      if (socket && roomId) {
-        socket.emit('leave-role', roomId);
-      }
-    }
-  };
-
   const starPoints = useMemo(() => {
     if (boardSize === 19) {
       return [
@@ -320,16 +320,16 @@ export default function App() {
             </div>
             <div className="flex gap-2">
               <button 
+                onClick={() => setShowRoomModal(true)}
+                className="px-5 py-2 rounded-full bg-emerald-600 text-white border border-emerald-600 hover:bg-emerald-700 transition-all text-sm font-bold shadow-sm active:scale-95"
+              >
+                Create/Join room
+              </button>
+              <button 
                 onClick={() => setShowSettings(!showSettings)}
                 className="px-5 py-2 rounded-full bg-zinc-100 text-zinc-800 border border-zinc-200 hover:bg-zinc-200 transition-all text-sm font-bold shadow-sm active:scale-95"
               >
                 Board Settings
-              </button>
-              <button 
-                onClick={() => resetGame()}
-                className="px-5 py-2 rounded-full bg-amber-50 text-amber-800 border border-amber-200 hover:bg-amber-100 transition-all text-sm font-bold shadow-sm active:scale-95"
-              >
-                Reset Game
               </button>
             </div>
           </div>
@@ -510,34 +510,40 @@ export default function App() {
 
         {/* Sidebar Status */}
         <aside className="space-y-8">
-          {/* Turn Indicator */}
-          <div className="p-6 bg-white rounded-2xl shadow-sm border border-black/5">
-            <div className="flex justify-between items-center mb-4">
-              <h3 className="text-xs uppercase tracking-widest opacity-50 font-semibold">Current Turn</h3>
-              {playerColor && playerColor !== 'spectator' && (
-                <span className="text-[10px] tracking-tighter px-2 py-1 bg-emerald-100 text-emerald-700 rounded-md font-bold">
-                  You are {playerColor}
-                </span>
-              )}
+          {/* Player Role */}
+          {playerColor && playerColor !== 'spectator' && (
+            <div className="p-6 bg-stone-100/50 rounded-2xl shadow-sm border border-stone-200/60">
+              <h3 className="text-xs uppercase tracking-widest opacity-50 font-semibold mb-4 text-stone-900">Your Role</h3>
+              <div className="flex justify-center py-2">
+                <div className={`w-14 h-14 rounded-full shadow-md ${
+                  playerColor === 'black' 
+                    ? 'bg-black' 
+                    : 'bg-white border border-black/10'
+                }`} />
+              </div>
             </div>
-            <div className="flex items-center gap-4">
-              <div className={`w-12 h-12 rounded-full shadow-md transition-all duration-500 ${
+          )}
+
+          {/* Turn Indicator */}
+          <div className="p-6 bg-stone-100/50 rounded-2xl shadow-sm border border-stone-200/60">
+            <div className="flex justify-between items-center mb-4">
+              <h3 className="text-xs uppercase tracking-widest opacity-50 font-semibold text-stone-900">Current Turn</h3>
+            </div>
+            <div className="flex flex-col items-center gap-4 py-2">
+              <div className={`w-14 h-14 rounded-full shadow-md transition-all duration-500 ${
                 gameState.turn === 'black' 
                   ? 'bg-black scale-110' 
                   : 'bg-white border border-black/10'
               }`} />
-              <div>
-                <p className="text-xl font-medium capitalize">{gameState.turn}</p>
-                <p className="text-sm opacity-60">
-                  {gameState.passes === 1 ? 'Last player passed' : 'Thinking...'}
-                </p>
-              </div>
+              <p className="text-lg font-medium opacity-60 text-center">
+                {gameState.passes === 1 ? 'Last player passed' : 'Thinking...'}
+              </p>
             </div>
           </div>
 
           {/* Captures */}
-          <div className="p-6 bg-white rounded-2xl shadow-sm border border-black/5">
-            <h3 className="text-xs uppercase tracking-widest opacity-50 mb-4 font-semibold">Captured Stones</h3>
+          <div className="p-6 bg-stone-100/50 rounded-2xl shadow-sm border border-stone-200/60">
+            <h3 className="text-xs uppercase tracking-widest opacity-50 mb-4 font-semibold text-stone-900">Captured Stones</h3>
             <div className="space-y-4">
               <div className="flex justify-between items-center">
                 <div className="flex items-center gap-2">
@@ -556,15 +562,14 @@ export default function App() {
             </div>
           </div>
 
-          {/* Leave Room Button */}
-          {playerColor && (
-            <button 
-              onClick={leaveSeat}
-              className="w-full py-4 bg-red-600 text-white rounded-2xl font-bold hover:bg-red-700 transition-all shadow-md active:scale-[0.98]"
-            >
-              Leave Room
-            </button>
-          )}
+          {/* Reset Game Button */}
+          <button 
+            onClick={() => setShowResetConfirm(true)}
+            disabled={!roomId}
+            className="w-full py-4 bg-amber-50 text-amber-800 border border-amber-200 rounded-2xl font-bold hover:bg-amber-100 transition-all shadow-md active:scale-[0.98] disabled:opacity-50 disabled:cursor-not-allowed"
+          >
+            Reset Game
+          </button>
 
           {/* Game Over Modal / Status */}
           <AnimatePresence>
@@ -600,6 +605,64 @@ export default function App() {
             )}
           </AnimatePresence>
 
+          {/* Room Management Overlay */}
+          <AnimatePresence>
+            {showRoomModal && (
+              <motion.div 
+                initial={{ opacity: 0 }}
+                animate={{ opacity: 1 }}
+                exit={{ opacity: 0 }}
+                className="fixed inset-0 bg-black/40 backdrop-blur-sm z-50 flex items-center justify-center p-6"
+                onClick={() => setShowRoomModal(false)}
+              >
+                <motion.div 
+                  initial={{ scale: 0.9, opacity: 0 }}
+                  animate={{ scale: 1, opacity: 1 }}
+                  className="bg-white rounded-3xl p-8 max-w-md w-full shadow-2xl"
+                  onClick={e => e.stopPropagation()}
+                >
+                  <h2 className="text-2xl font-serif mb-6">Create/Join Room</h2>
+                  <div className="space-y-6">
+                    <div>
+                      <label className="text-xs uppercase tracking-widest opacity-50 font-bold mb-3 block">Room ID</label>
+                      <div className="flex gap-2">
+                        <input 
+                          type="text"
+                          value={newRoomId}
+                          onChange={(e) => setNewRoomId(e.target.value.replace(/[^a-zA-Z0-9_-]/g, ''))}
+                          placeholder="Enter Room ID..."
+                          className="flex-1 px-4 py-3 rounded-xl border-2 border-black/10 focus:border-black outline-none transition-all font-mono text-sm"
+                        />
+                        <button
+                          onClick={handleJoinRoom}
+                          disabled={!newRoomId || newRoomId === roomId}
+                          className="px-6 py-3 bg-black text-white rounded-xl font-bold hover:bg-zinc-800 transition-all disabled:opacity-30 disabled:cursor-not-allowed text-sm"
+                        >
+                          Join
+                        </button>
+                      </div>
+                      <p className="text-[10px] text-zinc-400 mt-2">
+                        Enter a custom name to create or join a specific room.
+                      </p>
+                    </div>
+                    <div className="p-4 bg-zinc-50 rounded-xl flex gap-3 items-start">
+                      <Info className="text-zinc-400 shrink-0" size={20} />
+                      <p className="text-xs leading-relaxed text-zinc-600">
+                        Rooms are private and persistent. Share the Room ID or the URL with your opponent to play together.
+                      </p>
+                    </div>
+                  </div>
+                  <button 
+                    onClick={() => setShowRoomModal(false)}
+                    className="w-full mt-8 py-4 bg-zinc-100 rounded-2xl font-bold hover:bg-zinc-200 transition-colors"
+                  >
+                    Close
+                  </button>
+                </motion.div>
+              </motion.div>
+            )}
+          </AnimatePresence>
+
           {/* Settings Overlay */}
           <AnimatePresence>
             {showSettings && (
@@ -624,7 +687,10 @@ export default function App() {
                         {[9, 13, 19].map(size => (
                           <button
                             key={size}
-                            onClick={() => resetGame(size)}
+                            onClick={() => {
+                              setBoardSize(size);
+                              resetGame(size);
+                            }}
                             className={`py-3 rounded-xl border-2 transition-all font-bold ${
                               boardSize === size 
                                 ? 'border-black bg-black text-white' 
@@ -636,6 +702,7 @@ export default function App() {
                         ))}
                       </div>
                     </div>
+
                     <div className="p-4 bg-zinc-50 rounded-xl flex gap-3 items-start">
                       <Info className="text-zinc-400 shrink-0" size={20} />
                       <p className="text-xs leading-relaxed text-zinc-600">
@@ -650,6 +717,48 @@ export default function App() {
                   >
                     Close
                   </button>
+                </motion.div>
+              </motion.div>
+            )}
+          </AnimatePresence>
+
+          {/* Reset Confirmation Overlay */}
+          <AnimatePresence>
+            {showResetConfirm && (
+              <motion.div 
+                initial={{ opacity: 0 }}
+                animate={{ opacity: 1 }}
+                exit={{ opacity: 0 }}
+                className="fixed inset-0 bg-black/40 backdrop-blur-sm z-[60] flex items-center justify-center p-6"
+                onClick={() => setShowResetConfirm(false)}
+              >
+                <motion.div 
+                  initial={{ scale: 0.9, opacity: 0 }}
+                  animate={{ scale: 1, opacity: 1 }}
+                  className="bg-white rounded-3xl p-8 max-w-sm w-full shadow-2xl text-center"
+                  onClick={e => e.stopPropagation()}
+                >
+                  <div className="w-16 h-16 bg-amber-100 text-amber-600 rounded-full flex items-center justify-center mx-auto mb-6">
+                    <RotateCcw size={32} />
+                  </div>
+                  <h2 className="text-2xl font-serif mb-2">Reset Game?</h2>
+                  <p className="text-zinc-500 text-sm mb-8">
+                    This will clear the current board and start a new match for everyone in the room.
+                  </p>
+                  <div className="flex flex-col gap-3">
+                    <button 
+                      onClick={() => resetGame()}
+                      className="w-full py-4 bg-black text-white rounded-2xl font-bold hover:bg-zinc-800 transition-all active:scale-95"
+                    >
+                      Yes, Reset Game
+                    </button>
+                    <button 
+                      onClick={() => setShowResetConfirm(false)}
+                      className="w-full py-4 bg-zinc-100 text-zinc-600 rounded-2xl font-bold hover:bg-zinc-200 transition-all"
+                    >
+                      Cancel
+                    </button>
+                  </div>
                 </motion.div>
               </motion.div>
             )}
