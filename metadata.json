@@ -1,0 +1,5 @@
+{
+  "name": "Alpha 叟",
+  "description": "A classic game of Go (Weiqi) with full rule support, including captures, Ko rule, and automated scoring.",
+  "requestFramePermissions": []
+}
