@@ -300,32 +300,38 @@ export default function App() {
         <div className="text-center md:text-left">
           <h1 className="text-4xl font-serif font-light tracking-tight">Alpha 叟</h1>
         </div>
-        <div className="flex flex-wrap justify-center gap-4">
-          <div className="flex items-center gap-2 px-4 py-2 bg-black/5 rounded-full border border-black/5">
-            <Users size={16} className="opacity-40" />
-            <span className="text-xs font-mono opacity-60">Room: {roomId}</span>
-            <button 
-              onClick={copyRoomLink}
-              className="ml-2 p-1 hover:bg-black/5 rounded-md transition-colors"
-              title="Copy Room Link"
-            >
-              {copied ? <Check size={14} className="text-emerald-600" /> : <Copy size={14} className="opacity-40" />}
-            </button>
-          </div>
-          <div className="flex gap-2">
-            <button 
-              onClick={() => setShowSettings(!showSettings)}
-              className="p-2 rounded-full hover:bg-black/5 transition-colors"
-              title="Settings"
-            >
-              <Settings2 size={24} />
-            </button>
-            <button 
-              onClick={() => resetGame()}
-              className="px-5 py-2 rounded-full bg-amber-50 text-amber-800 border border-amber-200 hover:bg-amber-100 transition-all text-sm font-bold shadow-sm active:scale-95"
-            >
-              Reset Game
-            </button>
+        <div className="flex flex-col md:items-end gap-6">
+          <div className="flex flex-wrap justify-center gap-4 items-center">
+            <div className="flex flex-col items-center md:items-end gap-1.5">
+              <div className="flex items-center gap-2 px-4 py-2 bg-black/5 rounded-full border border-black/5">
+                <Users size={16} className="opacity-40" />
+                <span className="text-xs font-mono opacity-60">Room: {roomId}</span>
+                <button 
+                  onClick={copyRoomLink}
+                  className="ml-2 p-1 hover:bg-black/5 rounded-md transition-colors"
+                  title="Copy Room Link"
+                >
+                  {copied ? <Check size={14} className="text-emerald-600" /> : <Copy size={14} className="opacity-40" />}
+                </button>
+              </div>
+              <p className="text-[11px] text-zinc-500 font-semibold text-center md:text-right">
+                Copy and send this link to invite your friend
+              </p>
+            </div>
+            <div className="flex gap-2">
+              <button 
+                onClick={() => setShowSettings(!showSettings)}
+                className="px-5 py-2 rounded-full bg-zinc-100 text-zinc-800 border border-zinc-200 hover:bg-zinc-200 transition-all text-sm font-bold shadow-sm active:scale-95"
+              >
+                Board Settings
+              </button>
+              <button 
+                onClick={() => resetGame()}
+                className="px-5 py-2 rounded-full bg-amber-50 text-amber-800 border border-amber-200 hover:bg-amber-100 transition-all text-sm font-bold shadow-sm active:scale-95"
+              >
+                Reset Game
+              </button>
+            </div>
           </div>
         </div>
       </header>
@@ -509,7 +515,7 @@ export default function App() {
             <div className="flex justify-between items-center mb-4">
               <h3 className="text-xs uppercase tracking-widest opacity-50 font-semibold">Current Turn</h3>
               {playerColor && playerColor !== 'spectator' && (
-                <span className="text-[10px] uppercase tracking-tighter px-2 py-1 bg-emerald-100 text-emerald-700 rounded-md font-bold">
+                <span className="text-[10px] tracking-tighter px-2 py-1 bg-emerald-100 text-emerald-700 rounded-md font-bold">
                   You are {playerColor}
                 </span>
               )}
